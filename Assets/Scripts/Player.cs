@@ -90,15 +90,21 @@ public class Player : MonoBehaviour
     private Quaternion mTargetRotation;
 
     /// <summary>
-    /// Current state of gravity - 1.0 for down, -1.0f for up.
+    /// Current state of gravity - -1.0 for down, 1.0f for up.
     /// </summary>
-    private float mCurrentGravity = 1.0f;
+    private float mCurrentGravity = -1.0f;
 
     private bool mInvertedGravity = false;
 
     private bool mNotLost = false;
 
     private bool flippedSinceGroundedUsed = false;
+
+    [SerializeField] float horizontalSpeed = 10f;
+
+    private float horizontalMovement;
+
+    private bool jump = false;
 
     /// <summary>
     /// Called before the first frame update.
@@ -121,40 +127,23 @@ public class Player : MonoBehaviour
         {
 
             // Process player input.
-            var verticalMovement = Input.GetAxisRaw("Vertical");
-            var horizontalMovement = Input.GetAxisRaw("Horizontal");
+            horizontalMovement = Input.GetAxisRaw("Horizontal");
             var onGround = IsOnGround();
 
             // Impart the initial impulse if we are jumping.
             if (Input.GetButtonDown("Jump") && onGround)
-            { mRB.velocity = -Physics2D.gravity * jumpVelocity; }
+            {
+                jump = true;
+            }
 
             // Switch gravity with vertical movement.
             if (Input.GetButtonDown("ChangeGravity") && !flippedSinceGroundedUsed)
             {
                 flippedSinceGroundedUsed = true;
                 mInvertedGravity = !mInvertedGravity;
-            }
-
-            if (horizontalMovement > 0)
-            {
-                mRB.AddForce(Vector2.right);
-            }
-            if (horizontalMovement < 0)
-            {
-                mRB.AddForce(Vector2.left);
+                mCurrentGravity = mInvertedGravity ? 1.0f : -1.0f;
             }
         }
-        mCurrentGravity = mInvertedGravity ? 1.0f : -1.0f;
-        Physics2D.gravity = mCurrentGravity * new Vector2(
-            Math.Abs(Physics2D.gravity.x),
-            Math.Abs(Physics2D.gravity.y)
-        );
-        mTargetRotation = Quaternion.Euler(new float3(
-            rotateAxis.x && mCurrentGravity > 0.0f ? 180.0f : 0.0f,
-            rotateAxis.y && mCurrentGravity > 0.0f ? 180.0f : 0.0f,
-            rotateAxis.z && mCurrentGravity > 0.0f ? 180.0f : 0.0f
-        ) * axisDirection);
     }
 
     /// <summary>
@@ -191,6 +180,32 @@ public class Player : MonoBehaviour
         { // Snap to target rotation once on solid ground.
             mSpriteTransform.rotation = mTargetRotation;
             flippedSinceGroundedUsed = false;
+        }
+
+        Physics2D.gravity = mCurrentGravity * new Vector2(
+            Math.Abs(Physics2D.gravity.x),
+            Math.Abs(Physics2D.gravity.y)
+        );
+        mTargetRotation = Quaternion.Euler(new float3(
+            rotateAxis.x && mCurrentGravity > 0.0f ? 180.0f : 0.0f,
+            rotateAxis.y && mCurrentGravity > 0.0f ? 180.0f : 0.0f,
+            rotateAxis.z && mCurrentGravity > 0.0f ? 180.0f : 0.0f
+        ) * axisDirection);
+
+        //if (horizontalMovement > 0)
+        //{
+        //    mRB.AddForce(Vector2.right * horizontalSpeed * Time.deltaTime, ForceMode2D.Impulse);
+        //}
+        //if (horizontalMovement < 0)
+        //{
+        //    mRB.AddForce(Vector2.left * horizontalSpeed * Time.deltaTime, ForceMode2D.Impulse);
+        //}
+        mRB.velocity = new Vector2(horizontalMovement * horizontalSpeed * Time.deltaTime, mRB.velocity.y);
+
+        if (jump)
+        {
+            mRB.velocity += -Physics2D.gravity * jumpVelocity;
+            jump = false;
         }
     }
 
